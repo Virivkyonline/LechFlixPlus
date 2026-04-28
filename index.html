@@ -195,17 +195,17 @@ video{
 /* WEBTV OVERLAY */
 .webtv-player{position:fixed;inset:0;background:#000;z-index:90;display:none}
 .webtv-player.active{display:flex;flex-direction:column}
-.webtv-top{position:absolute;top:env(safe-area-inset-top,0);left:0;right:0;z-index:5;display:flex;align-items:center;gap:12px;padding:14px 18px;background:linear-gradient(180deg,rgba(0,0,0,.78),rgba(0,0,0,.18),transparent)}
+.webtv-top{position:absolute;top:env(safe-area-inset-top,0);left:0;right:auto;z-index:5;display:flex;align-items:center;gap:10px;padding:12px;pointer-events:none;background:transparent}
+.webtv-top .icon-btn{pointer-events:auto;background:rgba(0,0,0,.72);backdrop-filter:blur(10px)}
 .webtv-title{font-weight:1000;font-size:clamp(16px,2.2vw,26px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.webtv-frame{width:100%;height:100%;border:0;background:#000;padding-top:env(safe-area-inset-top,0)}
-.webtv-hint{margin-left:auto;color:#d4d4d8;font-weight:800;font-size:13px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:8px 12px}
+.webtv-frame{width:100%;height:100%;border:0;background:#000}
 .webtv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
 .webtv-card{min-height:160px;border-radius:22px;border:1px solid rgba(255,255,255,.10);background:linear-gradient(135deg,rgba(229,9,20,.24),rgba(255,255,255,.07));box-shadow:0 20px 52px rgba(0,0,0,.25);padding:22px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;transition:.16s ease}
 .webtv-card:hover,.webtv-card:focus{transform:translateY(-4px) scale(1.01);border-color:rgba(255,255,255,.28);outline:none}
 .webtv-card strong{font-size:26px;letter-spacing:-.04em}
 .webtv-card span{color:#d4d4d8;font-weight:750;line-height:1.35}
 .webtv-card b{align-self:flex-start;margin-top:18px;background:#fff;color:#000;border-radius:999px;padding:10px 14px;font-weight:1000}
-@media(max-width:760px){.webtv-hint{display:none}.webtv-top{padding:10px 12px}}
+@media(max-width:760px){.webtv-top{padding:10px}}
 
 /* MODALS */
 .overlay{
@@ -455,9 +455,7 @@ video{
 <section class="webtv-player" id="webtvPlayer" aria-label="WebTV fullscreen overlay">
   <div class="webtv-top">
     <button class="icon-btn" id="webtvBackBtn" title="Späť">←</button>
-    <div class="webtv-title" id="webtvTitle">WebTV</div>
-    <div class="webtv-hint">WebTV prehrávač / DRM zostáva na WebTV</div>
-  </div>
+    <div class="webtv-title" id="webtvTitle">WebTV</div>  </div>
   <iframe id="webtvFrame" class="webtv-frame" src="about:blank" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </section>
 
@@ -579,9 +577,9 @@ function setCategory(cat){
   if (isWebTVCategory(cat)){
     q.placeholder = "Stlač Hľadať alebo otvor kartu nižšie...";
     $("heroTitle").textContent = WEBTV_LABELS[cat] + " cez WebTV.";
-    $("heroText").textContent = "WebTV sa otvorí vo fullscreen overlayi. Prehrávanie aj DRM rieši priamo WebTV, worker zostáva iba pre Webshare.";
+    $("heroText").textContent = "WebTV sa otvorí priamo mimo iframe, aby fungovalo prihlásenie, cookies a uloženie hesla.";
     sectionTitle.textContent = WEBTV_LABELS[cat];
-    sectionMeta.textContent = "WebTV sekcia · iframe/WebView overlay · bez zásahu do DRM";
+    sectionMeta.textContent = "WebTV sekcia · priamy režim pre login";
     items = [];
     currentOffset = 0;
     hasMore = false;
@@ -624,27 +622,23 @@ function webtvCards(activeCat){
 function openWebTV(url, title){
   if (!url) return;
   closePlayer();
-  webtvTitle.textContent = title || "WebTV";
-  webtvFrame.src = url;
-  webtvPlayer.classList.add("active");
-  document.body.style.overflow = "hidden";
-  setStatus("WebTV otvorené");
-  if (!webtvHistoryPushed){
-    history.pushState({ webtv:true }, "", location.href);
-    webtvHistoryPushed = true;
-  }
+  setStatus("Otváram WebTV...");
+
+  // DIRECT LOGIN MODE
+  // WebTV sa neotvára v iframe, ale priamo ako hlavná stránka.
+  // Dôvod: iframe často blokuje prihlasovacie cookies/session a WebTV potom hlási zlé údaje.
+  // Pri priamom otvorení funguje uloženie loginu/hesla v prehliadači alebo Android WebView.
+  window.location.assign(url);
 }
 
 function closeWebTV(fromPopState){
+  // V direct režime sa WebTV neotvára ako overlay.
+  // Späť sa rieši tlačidlom späť v prehliadači alebo Android WebView.
   if (!webtvPlayer.classList.contains("active")) return;
   webtvPlayer.classList.remove("active");
   webtvFrame.src = "about:blank";
   document.body.style.overflow = "";
   setStatus("Pripravené");
-  if (webtvHistoryPushed){
-    webtvHistoryPushed = false;
-    if (!fromPopState) history.back();
-  }
 }
 
 async function search(){
